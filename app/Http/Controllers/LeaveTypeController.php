@@ -35,6 +35,8 @@ class LeaveTypeController extends Controller
             'description' => 'nullable|string',
             'max_days' => 'required|integer|min:0',
             'is_paid' => 'required|boolean',
+            'gender' => 'required|string|in:all,male,female',
+            'allow_carry_forward' => 'required|boolean',
             'color' => 'nullable|string',
             'status' => 'required|string|in:active,inactive',
         ]);
@@ -51,6 +53,8 @@ class LeaveTypeController extends Controller
             'description' => 'nullable|string',
             'max_days' => 'required|integer|min:0',
             'is_paid' => 'required|boolean',
+            'gender' => 'required|string|in:all,male,female',
+            'allow_carry_forward' => 'required|boolean',
             'color' => 'nullable|string',
             'status' => 'required|string|in:active,inactive',
         ]);

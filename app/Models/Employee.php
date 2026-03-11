@@ -133,4 +133,9 @@ class Employee extends Model
     {
         return $this->hasMany(SalaryAdvance::class);
     }
+
+    public function leaveApplications()
+    {
+        return $this->hasMany(LeaveApplication::class);
+    }
 }

@@ -34,24 +34,38 @@ class LeaveApplicationController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'employee_id' => 'required|exists:employees,id',
+        $user = auth()->user();
+        $isEmployee = $user->user_type === 'employee';
+
+        $rules = [
             'leave_type_id' => 'required|exists:leave_types,id',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
             'reason' => 'nullable|string',
-            'attachment' => 'nullable|string', // Should be file upload in practice
-            'status' => 'required|string|in:pending,approved,rejected',
-        ]);
+            'attachment' => 'nullable|string',
+        ];
+
+        if (!$isEmployee) {
+            $rules['employee_id'] = 'required|exists:employees,id';
+            $rules['status'] = 'required|string|in:pending,approved,rejected';
+        }
+
+        $validated = $request->validate($rules);
+
+        if ($isEmployee) {
+            $employee = Employee::where('user_id', $user->id)->firstOrFail();
+            $validated['employee_id'] = $employee->id;
+            $validated['status'] = 'pending';
+        }
 
         // Auto-set approved_by if approved
-        if ($validated['status'] === 'approved') {
+        if (isset($validated['status']) && $validated['status'] === 'approved') {
             $validated['approved_by'] = auth()->id();
         }
 
         $this->leaveService->createApplication($validated);
 
-        return to_route('leave-applications.index')->with('success', 'Leave application created successfully.');
+        return redirect()->back()->with('success', 'Leave application submitted successfully.');
     }
 
     public function update(Request $request, LeaveApplication $leaveApplication)
@@ -72,7 +86,7 @@ class LeaveApplicationController extends Controller
 
         $this->leaveService->updateApplication($leaveApplication, $validated);
 
-        return to_route('leave-applications.index')->with('success', 'Leave application updated successfully.');
+        return redirect()->back()->with('success', 'Leave application updated successfully.');
     }
 
     public function destroy(LeaveApplication $leaveApplication)

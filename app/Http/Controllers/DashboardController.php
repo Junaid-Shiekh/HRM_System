@@ -16,10 +16,18 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Support\Facades\DB;
+use App\Services\LeaveService;
 use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
+    private LeaveService $leaveService;
+
+    public function __construct(LeaveService $leaveService)
+    {
+        $this->leaveService = $leaveService;
+    }
+
     public function index(): Response
     {
         $now = Carbon::now();
@@ -170,6 +178,13 @@ class DashboardController extends Controller
             ->where('date', now()->toDateString())
             ->first() : null;
 
+        $leaveBalances = $employee ? $this->leaveService->getLeaveBalances($employee) : [];
+        $leaveApplications = $employee ? LeaveApplication::with('leaveType')
+            ->where('employee_id', $employee->id)
+            ->latest()
+            ->take(5)
+            ->get() : [];
+
         return Inertia::render('EmployeeDashboard', [
             'meetings' => $meetings,
             'complaints' => $complaints,
@@ -179,6 +194,9 @@ class DashboardController extends Controller
             'warningCount' => $warningCount,
             'employee' => $employee,
             'todayAttendance' => $todayAttendance,
+            'leaveBalances' => $leaveBalances,
+            'leaveApplications' => $leaveApplications,
+            'leaveTypes' => LeaveType::where('status', 'active')->get(),
         ]);
     }
 }

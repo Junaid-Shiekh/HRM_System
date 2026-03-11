@@ -83,6 +83,26 @@ Route::middleware('auth:web,employee')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Inventory Management
+    Route::prefix('inventory')->name('inventory.')->group(function () {
+        Route::get('/dashboard', [\App\Http\Controllers\Inventory\InventoryDashboardController::class, 'index'])->name('dashboard');
+        Route::resource('categories', \App\Http\Controllers\Inventory\InventoryCategoryController::class);
+        Route::resource('items', \App\Http\Controllers\Inventory\InventoryItemController::class);
+        Route::resource('suppliers', \App\Http\Controllers\Inventory\SupplierController::class);
+        Route::resource('purchase-orders', \App\Http\Controllers\Inventory\PurchaseOrderController::class);
+        Route::post('purchase-orders/{purchase_order}/approve', [\App\Http\Controllers\Inventory\PurchaseOrderController::class, 'approve'])->name('purchase-orders.approve');
+        Route::post('purchase-orders/{purchase_order}/receive', [\App\Http\Controllers\Inventory\PurchaseOrderController::class, 'receive'])->name('purchase-orders.receive');
+        Route::resource('warehouses', \App\Http\Controllers\Inventory\WarehouseController::class);
+        Route::resource('transfers', \App\Http\Controllers\Inventory\WarehouseTransferController::class);
+        Route::post('transfers/{transfer}/complete', [\App\Http\Controllers\Inventory\WarehouseTransferController::class, 'complete'])->name('transfers.complete');
+        Route::resource('asset-issuances', \App\Http\Controllers\Inventory\AssetIssuanceController::class);
+        Route::post('asset-issuances/{asset_issuance}/return', [\App\Http\Controllers\Inventory\AssetIssuanceController::class, 'returnAsset'])->name('asset-issuances.return');
+        Route::get('/stocks', [\App\Http\Controllers\Inventory\StockController::class, 'index'])->name('stocks.index');
+        Route::get('/stocks/logs', [\App\Http\Controllers\Inventory\StockController::class, 'logs'])->name('stocks.logs');
+        Route::post('/stocks/adjust', [\App\Http\Controllers\Inventory\StockController::class, 'adjust'])->name('stocks.adjust');
+        Route::get('/forecast', [\App\Http\Controllers\Inventory\InventoryDashboardController::class, 'forecast'])->name('forecast');
+    });
 });
 
 require __DIR__.'/auth.php';

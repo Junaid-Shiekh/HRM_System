@@ -9,6 +9,8 @@ import Tag from 'primevue/tag';
 import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
 import Textarea from 'primevue/textarea';
+import Dropdown from 'primevue/dropdown';
+import DatePicker from 'primevue/datepicker';
 import SweetAlert from '@/Components/SweetAlert.vue';
 
 const canClockIn = computed(() => {
@@ -53,7 +55,10 @@ const props = defineProps({
     advances: Array,
     warningCount: Number,
     employee: Object,
-    todayAttendance: Object
+    todayAttendance: Object,
+    leaveBalances: Array,
+    leaveApplications: Array,
+    leaveTypes: Array
 });
 
 const complaintDialog = ref(false);
@@ -64,6 +69,8 @@ const viewComplaintDialog = ref(false);
 const viewWarningDialog = ref(false);
 const viewLoanDialog = ref(false);
 const viewAdvanceDialog = ref(false);
+const leaveDialog = ref(false);
+const viewLeaveDialog = ref(false);
 const selectedItem = ref(null);
 const showAlert = ref(false);
 const alertConfig = ref({
@@ -89,6 +96,14 @@ const advanceForm = useForm({
     repayment_date: ''
 });
 
+const leaveForm = useForm({
+    leave_type_id: null,
+    start_date: null,
+    end_date: null,
+    reason: '',
+    status: 'pending'
+});
+
 const openNewComplaint = () => {
     form.reset();
     complaintDialog.value = true;
@@ -102,6 +117,11 @@ const openNewLoan = () => {
 const openNewAdvance = () => {
     advanceForm.reset();
     advanceDialog.value = true;
+};
+
+const openNewLeave = () => {
+    leaveForm.reset();
+    leaveDialog.value = true;
 };
 
 const submitComplaint = () => {
@@ -139,6 +159,28 @@ const submitAdvanceRequest = () => {
             alertConfig.value = {
                 title: 'Requested!',
                 message: 'Your salary advance request has been submitted to HR.',
+                type: 'success'
+            };
+            showAlert.value = true;
+        }
+    });
+};
+
+const submitLeaveRequest = () => {
+    // Format dates for backend
+    const formData = {
+        ...leaveForm.data(),
+        employee_id: props.employee.id,
+        start_date: leaveForm.start_date ? new Date(leaveForm.start_date.getTime() - (leaveForm.start_date.getTimezoneOffset() * 60000)).toISOString().split('T')[0] : null,
+        end_date: leaveForm.end_date ? new Date(leaveForm.end_date.getTime() - (leaveForm.end_date.getTimezoneOffset() * 60000)).toISOString().split('T')[0] : null,
+    };
+
+    router.post(route('leave-applications.store'), formData, {
+        onSuccess: () => {
+            leaveDialog.value = false;
+            alertConfig.value = {
+                title: 'Submitted!',
+                message: 'Your leave application has been submitted for approval.',
                 type: 'success'
             };
             showAlert.value = true;
@@ -184,6 +226,11 @@ const openViewAdvance = (advance) => {
     selectedItem.value = advance;
     viewAdvanceDialog.value = true;
 };
+
+const openViewLeave = (leave) => {
+    selectedItem.value = leave;
+    viewLeaveDialog.value = true;
+};
 const markAsRead = (warning) => {
     router.patch(route('warnings.mark-as-read', warning.id), {}, {
         onSuccess: () => {
@@ -221,6 +268,14 @@ const handleClockOut = () => {
             showAlert.value = true;
         }
     });
+};
+
+const calculateDays = (start, end) => {
+    if (!start || !end) return 0;
+    const s = new Date(start);
+    const e = new Date(end);
+    const diffTime = Math.abs(e - s);
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
 };
 
 const formatCurrency = (value) => {
@@ -269,6 +324,9 @@ const formatDateTime = (dateString, timeOnly = false) => {
                     <Button label="New Complaint" icon="pi pi-plus"
                         class="glass-button !bg-blue-900/10 !border-blue-900/20 !text-blue-900 hover:!bg-blue-900 hover:!text-white !px-6 !py-3 font-bold transition-all"
                         @click="openNewComplaint" />
+                    <Button label="Request Leave" icon="pi pi-calendar-plus"
+                        class="glass-button !bg-emerald-600/10 !border-emerald-600/20 !text-emerald-700 hover:!bg-emerald-600 hover:!text-white !px-6 !py-3 font-bold transition-all"
+                        @click="openNewLeave" />
                 </div>
             </div>
 
@@ -361,6 +419,37 @@ const formatDateTime = (dateString, timeOnly = false) => {
                             <div class="text-center sm:text-left">
                                 <h3 class="kpi-count">{{ kpi.count }}</h3>
                                 <p class="kpi-label">{{ kpi.label }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Leave Balances -->
+                    <div class="col-span-2 md:col-span-3 glass-card p-6 mt-4">
+                        <h2
+                            class="text-xs font-black text-gray-800 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                            <i class="pi pi-briefcase text-indigo-500"></i>
+                            Leave Balances
+                        </h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div v-for="balance in leaveBalances" :key="balance.leave_type_id"
+                                class="p-4 rounded-2xl border border-gray-100 bg-gray-50/50 hover:bg-white hover:shadow-md transition-all duration-300">
+                                <div class="flex items-center gap-3 mb-3">
+                                    <div class="w-2 h-8 rounded-full" :style="{ backgroundColor: '#' + balance.color }">
+                                    </div>
+                                    <span class="font-bold text-gray-700">{{ balance.leave_type_name }}</span>
+                                </div>
+                                <div class="flex justify-between items-end">
+                                    <div>
+                                        <p class="text-[10px] uppercase font-black text-gray-400 tracking-widest">
+                                            Remaining</p>
+                                        <p class="text-2xl font-black text-gray-900">{{ balance.remaining }} <span
+                                                class="text-xs text-gray-400 font-medium">Days</span></p>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-[10px] font-bold text-gray-400">{{ balance.used }} / {{
+                                            balance.entitlement }} Used</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -507,6 +596,46 @@ const formatDateTime = (dateString, timeOnly = false) => {
                     </div>
                 </div>
 
+                <!-- Leave Applications Section -->
+                <div class="section-card glass-card">
+                    <div class="section-header flex justify-between items-center">
+                        <h2 class="text-xl font-black text-gray-800 flex items-center gap-3">
+                            <span class="w-2 h-8 bg-emerald-500 rounded-full"></span>
+                            My Leaves
+                        </h2>
+                    </div>
+                    <div class="p-4">
+                        <DataTable :value="leaveApplications" responsiveLayout="scroll" :rows="3" class="custom-table">
+                            <Column header="Type" class="font-bold">
+                                <template #body="slotProps">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-2 h-2 rounded-full"
+                                            :style="{ backgroundColor: '#' + slotProps.data.leave_type?.color }"></div>
+                                        {{ slotProps.data.leave_type?.name }}
+                                    </div>
+                                </template>
+                            </Column>
+                            <Column header="Status" class="w-24">
+                                <template #body="slotProps">
+                                    <Tag :value="slotProps.data.status.toUpperCase()"
+                                        :severity="getStatusSeverity(slotProps.data.status)"
+                                        class="!text-[9px] !font-black" />
+                                </template>
+                            </Column>
+                            <Column header="Actions" class="w-16">
+                                <template #body="slotProps">
+                                    <Button icon="pi pi-chevron-right" text rounded
+                                        @click="openViewLeave(slotProps.data)" class="!p-0 !w-8 !h-8" />
+                                </template>
+                            </Column>
+                        </DataTable>
+                        <div v-if="!leaveApplications.length" class="empty-state">
+                            <i class="pi pi-calendar text-2xl mb-2 text-gray-300"></i>
+                            <p>No leave applications</p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Warnings Section (Full Width) -->
                 <div class="section-card glass-card xl:col-span-2">
                     <div class="section-header flex justify-between items-center">
@@ -566,9 +695,10 @@ const formatDateTime = (dateString, timeOnly = false) => {
                 </div>
                 <template #footer>
                     <div class="flex justify-end gap-3 p-2">
-                        <Button label="Cancel" text @click="complaintDialog = false" 
+                        <Button label="Cancel" text @click="complaintDialog = false"
                             class="!text-gray-500 !font-bold !px-6 hover:!bg-gray-50 !rounded-xl transition-all" />
-                        <Button label="Submit Complaint" icon="pi pi-send" @click="submitComplaint" :loading="form.processing"
+                        <Button label="Submit Complaint" icon="pi pi-send" @click="submitComplaint"
+                            :loading="form.processing"
                             class="!bg-indigo-600 !border-indigo-600 !px-8 !py-3 !rounded-xl !font-bold hover:!bg-indigo-700 transition-all shadow-lg shadow-indigo-200" />
                     </div>
                 </template>
@@ -591,7 +721,8 @@ const formatDateTime = (dateString, timeOnly = false) => {
                     <div class="flex justify-end gap-3 p-2">
                         <Button label="Cancel" text @click="loanDialog = false"
                             class="!text-gray-500 !font-bold !px-6 hover:!bg-gray-50 !rounded-xl transition-all" />
-                        <Button label="Submit Request" icon="pi pi-check" @click="submitLoanRequest" :loading="loanForm.processing"
+                        <Button label="Submit Request" icon="pi pi-check" @click="submitLoanRequest"
+                            :loading="loanForm.processing"
                             class="!bg-indigo-600 !border-indigo-600 !px-8 !py-3 !rounded-xl !font-bold hover:!bg-indigo-700 transition-all shadow-lg shadow-indigo-200" />
                     </div>
                 </template>
@@ -613,7 +744,8 @@ const formatDateTime = (dateString, timeOnly = false) => {
                     <div class="flex justify-end gap-3 p-2">
                         <Button label="Cancel" text @click="advanceDialog = false"
                             class="!text-gray-500 !font-bold !px-6 hover:!bg-gray-50 !rounded-xl transition-all" />
-                        <Button label="Submit Request" icon="pi pi-check" @click="submitAdvanceRequest" :loading="advanceForm.processing"
+                        <Button label="Submit Request" icon="pi pi-check" @click="submitAdvanceRequest"
+                            :loading="advanceForm.processing"
                             class="!bg-fuchsia-600 !border-fuchsia-600 !px-8 !py-3 !rounded-xl !font-bold hover:!bg-fuchsia-700 transition-all shadow-lg shadow-fuchsia-200" />
                     </div>
                 </template>
@@ -635,7 +767,8 @@ const formatDateTime = (dateString, timeOnly = false) => {
                 </div>
                 <template #footer>
                     <div class="flex justify-end p-2">
-                        <Button label="Close" text @click="viewMeetingDialog = false" class="!font-bold !text-indigo-600" />
+                        <Button label="Close" text @click="viewMeetingDialog = false"
+                            class="!font-bold !text-indigo-600" />
                     </div>
                 </template>
             </Dialog>
@@ -646,21 +779,24 @@ const formatDateTime = (dateString, timeOnly = false) => {
                     <div class="p-4 bg-orange-50/50 rounded-2xl border border-orange-100">
                         <h3 class="text-xl font-black text-orange-900">{{ selectedItem.title }}</h3>
                         <div class="flex gap-2 mt-2">
-                            <Tag :value="selectedItem.status.toUpperCase()" :severity="getStatusSeverity(selectedItem.status)" />
+                            <Tag :value="selectedItem.status.toUpperCase()"
+                                :severity="getStatusSeverity(selectedItem.status)" />
                         </div>
                     </div>
                     <div class="p-4 bg-gray-50 rounded-2xl border border-gray-100 text-gray-600">
                         <p class="font-bold text-xs uppercase tracking-widest text-gray-400 mb-2">Description</p>
                         {{ selectedItem.description }}
                     </div>
-                    <div v-if="selectedItem.resolution_note" class="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 text-emerald-700">
+                    <div v-if="selectedItem.resolution_note"
+                        class="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 text-emerald-700">
                         <p class="font-bold text-xs uppercase tracking-widest text-emerald-500 mb-2">HR Resolution</p>
                         {{ selectedItem.resolution_note }}
                     </div>
                 </div>
                 <template #footer>
                     <div class="flex justify-end p-2">
-                        <Button label="Close" text @click="viewComplaintDialog = false" class="!font-bold !text-orange-600" />
+                        <Button label="Close" text @click="viewComplaintDialog = false"
+                            class="!font-bold !text-orange-600" />
                     </div>
                 </template>
             </Dialog>
@@ -678,18 +814,21 @@ const formatDateTime = (dateString, timeOnly = false) => {
                 </div>
                 <template #footer>
                     <div class="flex justify-end p-2">
-                        <Button label="Close" text @click="viewWarningDialog = false" class="!font-bold !text-rose-600" />
+                        <Button label="Close" text @click="viewWarningDialog = false"
+                            class="!font-bold !text-rose-600" />
                     </div>
                 </template>
             </Dialog>
 
-            <Dialog v-model:visible="viewLoanDialog" :style="{ width: '500px' }" header="Loan Details"
-                :modal="true" class="glass-modal">
+            <Dialog v-model:visible="viewLoanDialog" :style="{ width: '500px' }" header="Loan Details" :modal="true"
+                class="glass-modal">
                 <div v-if="selectedItem" class="space-y-4">
                     <div class="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100">
                         <div class="flex justify-between items-center">
-                            <h3 class="text-2xl font-black text-indigo-900">{{ formatCurrency(selectedItem.amount) }}</h3>
-                            <Tag :value="selectedItem.status.toUpperCase()" :severity="getStatusSeverity(selectedItem.status)" />
+                            <h3 class="text-2xl font-black text-indigo-900">{{ formatCurrency(selectedItem.amount) }}
+                            </h3>
+                            <Tag :value="selectedItem.status.toUpperCase()"
+                                :severity="getStatusSeverity(selectedItem.status)" />
                         </div>
                     </div>
                     <div class="grid grid-cols-2 gap-4">
@@ -699,7 +838,8 @@ const formatDateTime = (dateString, timeOnly = false) => {
                         </div>
                         <div class="p-4 bg-gray-50 rounded-2xl border border-gray-100">
                             <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Monthly</p>
-                            <p class="font-black text-gray-700">{{ formatCurrency(selectedItem.monthly_installment) }}</p>
+                            <p class="font-black text-gray-700">{{ formatCurrency(selectedItem.monthly_installment) }}
+                            </p>
                         </div>
                     </div>
                     <div class="p-4 bg-gray-50 rounded-2xl border border-gray-100 text-gray-600">
@@ -709,7 +849,8 @@ const formatDateTime = (dateString, timeOnly = false) => {
                 </div>
                 <template #footer>
                     <div class="flex justify-end p-2">
-                        <Button label="Close" text @click="viewLoanDialog = false" class="!font-bold !text-indigo-600" />
+                        <Button label="Close" text @click="viewLoanDialog = false"
+                            class="!font-bold !text-indigo-600" />
                     </div>
                 </template>
             </Dialog>
@@ -719,8 +860,10 @@ const formatDateTime = (dateString, timeOnly = false) => {
                 <div v-if="selectedItem" class="space-y-4">
                     <div class="p-4 bg-fuchsia-50/50 rounded-2xl border border-fuchsia-100">
                         <div class="flex justify-between items-center">
-                            <h3 class="text-2xl font-black text-fuchsia-900">{{ formatCurrency(selectedItem.amount) }}</h3>
-                            <Tag :value="selectedItem.status.toUpperCase()" :severity="getStatusSeverity(selectedItem.status)" />
+                            <h3 class="text-2xl font-black text-fuchsia-900">{{ formatCurrency(selectedItem.amount) }}
+                            </h3>
+                            <Tag :value="selectedItem.status.toUpperCase()"
+                                :severity="getStatusSeverity(selectedItem.status)" />
                         </div>
                     </div>
                     <div class="p-4 bg-gray-50 rounded-2xl border border-gray-100 text-gray-600">
@@ -734,7 +877,71 @@ const formatDateTime = (dateString, timeOnly = false) => {
                 </div>
                 <template #footer>
                     <div class="flex justify-end p-2">
-                        <Button label="Close" text @click="viewAdvanceDialog = false" class="!font-bold !text-fuchsia-600" />
+                        <Button label="Close" text @click="viewAdvanceDialog = false"
+                            class="!font-bold !text-fuchsia-600" />
+                    </div>
+                </template>
+            </Dialog>
+
+            <Dialog v-model:visible="leaveDialog" header="Request a Leave" :style="{ width: '500px' }" :modal="true"
+                class="p-fluid glass-modal">
+                <div class="flex flex-col gap-4 p-1">
+                    <div class="flex flex-col gap-2">
+                        <label class="font-bold text-sm">Leave Type</label>
+                        <Dropdown v-model="leaveForm.leave_type_id" :options="leaveTypes" optionLabel="name"
+                            optionValue="id" placeholder="Select Leave Type" class="!rounded-xl" />
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="flex flex-col gap-2">
+                            <label class="font-bold text-sm">Start Date</label>
+                            <DatePicker v-model="leaveForm.start_date" dateFormat="yy-mm-dd" showIcon
+                                class="!rounded-xl" />
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <label class="font-bold text-sm">End Date</label>
+                            <DatePicker v-model="leaveForm.end_date" dateFormat="yy-mm-dd" showIcon
+                                :minDate="leaveForm.start_date" class="!rounded-xl" />
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <label class="font-bold text-sm">Reason</label>
+                        <Textarea v-model="leaveForm.reason" rows="3" class="!rounded-xl !resize-none" />
+                    </div>
+                </div>
+                <template #footer>
+                    <div class="flex justify-end gap-3 p-2">
+                        <Button label="Cancel" text @click="leaveDialog = false"
+                            class="!text-gray-500 !font-bold !px-6 hover:!bg-gray-50 !rounded-xl transition-all" />
+                        <Button label="Submit Request" icon="pi pi-check" @click="submitLeaveRequest"
+                            :loading="leaveForm.processing"
+                            class="!bg-emerald-600 !border-emerald-600 !px-8 !py-3 !rounded-xl !font-bold hover:!bg-emerald-700 transition-all shadow-lg shadow-emerald-200" />
+                    </div>
+                </template>
+            </Dialog>
+
+            <Dialog v-model:visible="viewLeaveDialog" :style="{ width: '500px' }" header="Leave Details" :modal="true"
+                class="glass-modal">
+                <div v-if="selectedItem" class="space-y-4">
+                    <div class="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-xl font-black text-emerald-900">{{ selectedItem.leave_type?.name }}</h3>
+                            <Tag :value="selectedItem.status.toUpperCase()"
+                                :severity="getStatusSeverity(selectedItem.status)" />
+                        </div>
+                        <p class="text-sm text-emerald-600 font-bold mt-1">
+                            {{ selectedItem.start_date }} to {{ selectedItem.end_date }}
+                            ({{ calculateDays(selectedItem.start_date, selectedItem.end_date) }} Days)
+                        </p>
+                    </div>
+                    <div class="p-4 bg-gray-50 rounded-2xl border border-gray-100 text-gray-600">
+                        <p class="font-bold text-xs uppercase tracking-widest text-gray-400 mb-2">Reason</p>
+                        {{ selectedItem.reason }}
+                    </div>
+                </div>
+                <template #footer>
+                    <div class="flex justify-end p-2">
+                        <Button label="Close" text @click="viewLeaveDialog = false"
+                            class="!font-bold !text-emerald-600" />
                     </div>
                 </template>
             </Dialog>

@@ -16,6 +16,8 @@ class LeaveType extends Model
         'description',
         'max_days',
         'is_paid',
+        'gender',
+        'allow_carry_forward',
         'color',
         'status',
     ];

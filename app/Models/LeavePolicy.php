@@ -21,8 +21,25 @@ class LeavePolicy extends Model
         'carry_forward_limit',
         'min_days',
         'max_days',
+        'max_days_per_request',
+        'max_consecutive_days',
+        'notice_period_days',
+        'allow_carry_forward',
+        'probation_restriction_days',
+        'allow_half_day',
+        'allow_encashment',
+        'applicability_type',
+        'applicability_ids',
         'requires_approval',
         'status',
+    ];
+
+    protected $casts = [
+        'applicability_ids' => 'array',
+        'allow_carry_forward' => 'boolean',
+        'allow_half_day' => 'boolean',
+        'allow_encashment' => 'boolean',
+        'requires_approval' => 'boolean',
     ];
 
     public function leaveType()

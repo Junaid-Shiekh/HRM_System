@@ -26,6 +26,8 @@ class LeavePolicyController extends Controller
         return Inertia::render('LeavePolicies/Index', [
             'leavePolicies' => $leavePolicies,
             'leaveTypes' => LeaveType::where('status', 'active')->get(),
+            'departments' => \App\Models\Department::all(),
+            'designations' => \App\Models\Designation::all(),
             'filters' => $filters,
         ]);
     }
@@ -41,6 +43,15 @@ class LeavePolicyController extends Controller
             'carry_forward_limit' => 'required|integer|min:0',
             'min_days' => 'required|integer|min:1',
             'max_days' => 'nullable|integer|min:1',
+            'max_days_per_request' => 'nullable|integer|min:1',
+            'max_consecutive_days' => 'nullable|integer|min:1',
+            'notice_period_days' => 'required|integer|min:0',
+            'allow_carry_forward' => 'required|boolean',
+            'probation_restriction_days' => 'required|integer|min:0',
+            'allow_half_day' => 'required|boolean',
+            'allow_encashment' => 'required|boolean',
+            'applicability_type' => 'required|string|in:all,department,designation',
+            'applicability_ids' => 'nullable|array',
             'requires_approval' => 'required|boolean',
             'status' => 'required|string|in:active,inactive',
         ]);
@@ -61,6 +72,15 @@ class LeavePolicyController extends Controller
             'carry_forward_limit' => 'required|integer|min:0',
             'min_days' => 'required|integer|min:1',
             'max_days' => 'nullable|integer|min:1',
+            'max_days_per_request' => 'nullable|integer|min:1',
+            'max_consecutive_days' => 'nullable|integer|min:1',
+            'notice_period_days' => 'required|integer|min:0',
+            'allow_carry_forward' => 'required|boolean',
+            'probation_restriction_days' => 'required|integer|min:0',
+            'allow_half_day' => 'required|boolean',
+            'allow_encashment' => 'required|boolean',
+            'applicability_type' => 'required|string|in:all,department,designation',
+            'applicability_ids' => 'nullable|array',
             'requires_approval' => 'required|boolean',
             'status' => 'required|string|in:active,inactive',
         ]);

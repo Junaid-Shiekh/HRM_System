@@ -228,8 +228,6 @@ const calculateDays = (start, end) => {
     <AuthenticatedLayout>
         <div class="mb-6 flex justify-between items-center">
             <h2 class="text-2xl font-bold text-gray-800">Leave Application Management</h2>
-            <Button label="Add Leave Application" icon="pi pi-plus" @click="openNew"
-                class="!bg-[#1C0D82] !border-[#1C0D82] hover:!bg-[#150a61] text-white !px-6 !py-2.5" />
         </div>
 
         <SearchFilter v-model="searchTerm" v-model:perPage="perPage" placeholder="Search leave applications..."
@@ -364,7 +362,7 @@ const calculateDays = (start, end) => {
                     <label class="font-bold text-gray-500">Reason</label>
                     <div class="p-2 bg-gray-50 rounded border text-sm overflow-hidden text-ellipsis">{{ viewData.reason
                         || '-'
-                    }}</div>
+                        }}</div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div class="flex flex-col gap-1">

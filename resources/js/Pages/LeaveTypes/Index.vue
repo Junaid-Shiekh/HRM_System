@@ -83,6 +83,8 @@ const form = useForm({
     description: '',
     max_days: 0,
     is_paid: true,
+    gender: 'all',
+    allow_carry_forward: false,
     color: '3498db',
     status: 'active'
 });
@@ -90,6 +92,12 @@ const form = useForm({
 const statuses = [
     { label: 'Active', value: 'active' },
     { label: 'Inactive', value: 'inactive' }
+];
+
+const genderOptions = [
+    { label: 'All', value: 'all' },
+    { label: 'Male Only', value: 'male' },
+    { label: 'Female Only', value: 'female' }
 ];
 
 const openNew = () => {
@@ -107,6 +115,8 @@ const editLeaveType = (type) => {
     form.description = type.description;
     form.max_days = type.max_days;
     form.is_paid = !!type.is_paid;
+    form.gender = type.gender || 'all';
+    form.allow_carry_forward = !!type.allow_carry_forward;
     form.color = type.color || '3498db';
     form.status = type.status;
 
@@ -261,90 +271,168 @@ const getSeverity = (status) => {
             </DataTable>
         </div>
 
-        <Dialog v-model:visible="leaveTypeDialog" :style="{ width: '450px' }"
+        <!-- Add / Edit Dialog -->
+        <Dialog v-model:visible="leaveTypeDialog" :style="{ width: '620px' }"
             :header="isEdit ? 'Edit Leave Type' : 'Add New Leave Type'" :modal="true" class="p-fluid">
-            <div class="flex flex-col gap-4 pt-4">
-                <div class="flex flex-col gap-2">
-                    <label class="font-bold">Leave Type Name *</label>
-                    <InputText v-model="form.name" required autofocus :invalid="submitted && !form.name" />
-                    <small class="text-red-500" v-if="form.errors.name">{{ form.errors.name }}</small>
+            <div class="flex flex-col gap-5 pt-4">
+
+                <!-- Leave Type Name -->
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs font-semibold text-gray-500 uppercase tracking-widest">
+                        Leave Type Name <span class="text-red-500">*</span>
+                    </label>
+                    <InputText v-model="form.name" required autofocus :invalid="submitted && !form.name"
+                        placeholder="e.g. Annual Leave, Sick Leave..." class="!py-3 !px-4 !text-base !rounded-lg" />
+                    <small class="text-red-500 text-xs" v-if="form.errors.name">{{ form.errors.name }}</small>
                 </div>
-                <div class="flex flex-col gap-2">
-                    <label class="font-bold">Description</label>
-                    <Textarea v-model="form.description" rows="3" />
+
+                <!-- Description -->
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs font-semibold text-gray-500 uppercase tracking-widest">Description</label>
+                    <Textarea v-model="form.description" rows="3" placeholder="Brief description of this leave type..."
+                        class="!py-3 !px-4 !text-base !rounded-lg resize-none" />
                 </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="flex flex-col gap-2">
-                        <label class="font-bold">Max Days / Year *</label>
-                        <InputNumber v-model="form.max_days" showButtons :min="0" />
+
+                <!-- Max Days & Applicability -->
+                <div class="grid grid-cols-2 gap-5">
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-xs font-semibold text-gray-500 uppercase tracking-widest">
+                            Max Days / Year <span class="text-red-500">*</span>
+                        </label>
+                        <InputNumber v-model="form.max_days" showButtons :min="0" inputClass="!py-3 !text-base"
+                            class="!rounded-lg" />
                     </div>
-                    <div class="flex flex-col gap-2 flex justify-center mt-6">
-                        <div class="flex items-center gap-2">
-                            <Checkbox v-model="form.is_paid" :binary="true" inputId="is_paid" />
-                            <label for="is_paid" class="font-bold cursor-pointer">Is Paid</label>
+                    <div class="flex flex-col gap-1.5">
+                        <label
+                            class="text-xs font-semibold text-gray-500 uppercase tracking-widest">Applicability</label>
+                        <Dropdown v-model="form.gender" :options="genderOptions" optionLabel="label" optionValue="value"
+                            placeholder="Select Applicability" class="!py-1 !rounded-lg" />
+                    </div>
+                </div>
+
+                <!-- Checkbox Cards -->
+                <div class="grid grid-cols-2 gap-5">
+                    <div class="flex items-start gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200 hover:border-[#1C0D82] hover:bg-indigo-50 transition-all duration-200 cursor-pointer select-none"
+                        @click="form.is_paid = !form.is_paid">
+                        <Checkbox v-model="form.is_paid" :binary="true" inputId="is_paid" class="mt-0.5" />
+                        <div>
+                            <label for="is_paid" class="font-semibold text-gray-800 cursor-pointer block text-sm">Is
+                                Paid</label>
+                            <span class="text-xs text-gray-500 leading-snug">Employees receive pay during this
+                                leave</span>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200 hover:border-[#1C0D82] hover:bg-indigo-50 transition-all duration-200 cursor-pointer select-none"
+                        @click="form.allow_carry_forward = !form.allow_carry_forward">
+                        <Checkbox v-model="form.allow_carry_forward" :binary="true" inputId="carry_forward"
+                            class="mt-0.5" />
+                        <div>
+                            <label for="carry_forward"
+                                class="font-semibold text-gray-800 cursor-pointer block text-sm">Allow
+                                Carry Forward</label>
+                            <span class="text-xs text-gray-500 leading-snug">Unused days roll over to next year</span>
                         </div>
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="flex flex-col gap-2">
-                        <label class="font-bold">Color *</label>
-                        <div class="flex items-center gap-2 p-2 border rounded-md">
+
+                <!-- Color & Status -->
+                <div class="grid grid-cols-2 gap-5">
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-xs font-semibold text-gray-500 uppercase tracking-widest">
+                            Color <span class="text-red-500">*</span>
+                        </label>
+                        <div
+                            class="flex items-center gap-3 px-3 py-2.5 border border-gray-300 rounded-lg bg-white hover:border-[#1C0D82] transition-colors cursor-pointer">
                             <ColorPicker v-model="form.color" format="hex" />
-                            <span class="text-sm font-bold text-gray-600">#{{ form.color }}</span>
+                            <div class="w-7 h-7 rounded-md shadow-sm border border-gray-200 flex-shrink-0"
+                                :style="{ backgroundColor: '#' + form.color }"></div>
+                            <span class="text-sm font-mono font-bold text-gray-700">#{{ form.color?.toUpperCase()
+                                }}</span>
                         </div>
                     </div>
-                    <div class="flex flex-col gap-2">
-                        <label class="font-bold">Status</label>
-                        <Dropdown v-model="form.status" :options="statuses" optionLabel="label" optionValue="value" />
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-xs font-semibold text-gray-500 uppercase tracking-widest">Status</label>
+                        <Dropdown v-model="form.status" :options="statuses" optionLabel="label" optionValue="value"
+                            class="!py-1 !rounded-lg" />
                     </div>
                 </div>
+
             </div>
+
             <template #footer>
-                <Button label="Cancel" icon="pi pi-times"
-                    class="bg-gray-200 text-gray-700 hover:bg-gray-300 !px-6 !py-2.5 !border-gray-200"
-                    @click="hideDialog" />
-                <Button label="Save" icon="pi pi-check" @click="saveLeaveType" :loading="form.processing"
-                    class="!bg-[#1C0D82] !border-[#1C0D82] hover:!bg-[#150a61] text-white !px-6 !py-2.5" />
+                <div class="flex justify-end gap-3 pt-3 border-t border-gray-100 mt-2">
+                    <Button label="Cancel" icon="pi pi-times"
+                        class="!bg-white !text-gray-700 !border-gray-300 hover:!bg-gray-50 !px-6 !py-2.5 !font-semibold !rounded-lg"
+                        @click="hideDialog" />
+                    <Button :label="isEdit ? 'Update Leave Type' : 'Save Leave Type'" icon="pi pi-check"
+                        @click="saveLeaveType" :loading="form.processing"
+                        class="!bg-[#1C0D82] !border-[#1C0D82] hover:!bg-[#150a61] !text-white !px-8 !py-2.5 !font-semibold !rounded-lg" />
+                </div>
             </template>
         </Dialog>
 
-        <Dialog v-model:visible="viewDialog" :style="{ width: '450px' }" header="Leave Type Details" :modal="true">
-            <div class="flex flex-col gap-4" v-if="viewData">
+        <!-- View Dialog -->
+        <Dialog v-model:visible="viewDialog" :style="{ width: '500px' }" header="Leave Type Details" :modal="true">
+            <div class="flex flex-col gap-4 pt-2" v-if="viewData">
                 <div class="flex flex-col gap-1">
-                    <label class="font-bold text-gray-500">Name</label>
-                    <div class="flex items-center gap-2 p-2 bg-gray-50 rounded border">
-                        <div class="w-3 h-3 rounded-full" :style="{ backgroundColor: '#' + viewData.color }"></div>
-                        {{ viewData.name }}
+                    <label class="text-xs font-semibold text-gray-500 uppercase tracking-widest">Name</label>
+                    <div class="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <div class="w-4 h-4 rounded-full flex-shrink-0"
+                            :style="{ backgroundColor: '#' + viewData.color }">
+                        </div>
+                        <span class="font-semibold text-gray-800">{{ viewData.name }}</span>
                     </div>
                 </div>
                 <div class="flex flex-col gap-1">
-                    <label class="font-bold text-gray-500">Description</label>
-                    <div class="p-2 bg-gray-50 rounded border">{{ viewData.description || '-' }}</div>
+                    <label class="text-xs font-semibold text-gray-500 uppercase tracking-widest">Description</label>
+                    <div class="p-3 bg-gray-50 rounded-lg border border-gray-200 text-gray-700">{{ viewData.description
+                        || '—'
+                        }}</div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div class="flex flex-col gap-1">
-                        <label class="font-bold text-gray-500">Max Days</label>
-                        <div class="p-2 bg-gray-50 rounded border">{{ viewData.max_days }}</div>
+                        <label class="text-xs font-semibold text-gray-500 uppercase tracking-widest">Max Days /
+                            Year</label>
+                        <div class="p-3 bg-gray-50 rounded-lg border border-gray-200 font-semibold text-gray-800">{{
+                            viewData.max_days }}</div>
                     </div>
                     <div class="flex flex-col gap-1">
-                        <label class="font-bold text-gray-500">Type</label>
-                        <div class="p-2 bg-gray-50 rounded border">
+                        <label
+                            class="text-xs font-semibold text-gray-500 uppercase tracking-widest">Applicability</label>
+                        <div class="p-3 bg-gray-50 rounded-lg border border-gray-200 capitalize text-gray-800">{{
+                            viewData.gender }}</div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs font-semibold text-gray-500 uppercase tracking-widest">Type</label>
+                        <div class="p-2 bg-gray-50 rounded-lg border border-gray-200">
                             <Tag :value="viewData.is_paid ? 'Paid' : 'Unpaid'"
                                 :severity="viewData.is_paid ? 'success' : 'danger'" />
                         </div>
                     </div>
-                </div>
-                <div class="flex flex-col gap-1">
-                    <label class="font-bold text-gray-500">Status</label>
-                    <div>
-                        <Tag :value="viewData.status" :severity="getSeverity(viewData.status)" />
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs font-semibold text-gray-500 uppercase tracking-widest">Carry
+                            Forward</label>
+                        <div class="p-2 bg-gray-50 rounded-lg border border-gray-200">
+                            <Tag :value="viewData.allow_carry_forward ? 'Yes' : 'No'"
+                                :severity="viewData.allow_carry_forward ? 'success' : 'secondary'" />
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs font-semibold text-gray-500 uppercase tracking-widest">Status</label>
+                        <div class="p-2 bg-gray-50 rounded-lg border border-gray-200">
+                            <Tag :value="viewData.status" :severity="getSeverity(viewData.status)" />
+                        </div>
                     </div>
                 </div>
             </div>
             <template #footer>
-                <Button label="Close" icon="pi pi-times"
-                    class="bg-gray-200 text-gray-700 hover:bg-gray-300 !px-6 !py-2.5 !border-gray-200"
-                    @click="viewDialog = false" />
+                <div class="flex justify-end pt-3 border-t border-gray-100 mt-2">
+                    <Button label="Close" icon="pi pi-times"
+                        class="!bg-white !text-gray-700 !border-gray-300 hover:!bg-gray-50 !px-6 !py-2.5 !rounded-lg"
+                        @click="viewDialog = false" />
+                </div>
             </template>
         </Dialog>
 
