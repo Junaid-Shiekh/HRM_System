@@ -41,6 +41,7 @@ class HandleInertiaRequests extends Middleware
             })->where('status', 'pending')->count()) : 0,
             'pendingLoanCount' => $request->user() ? \App\Models\Loan::where('status', 'pending')->count() : 0,
             'pendingAdvanceCount' => $request->user() ? \App\Models\SalaryAdvance::where('status', 'pending')->count() : 0,
+            'pendingLeaveCount' => $request->user() ? \App\Models\LeaveApplication::where('status', 'pending')->count() : 0,
         ];
 
     }

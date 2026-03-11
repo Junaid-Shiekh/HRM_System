@@ -51,6 +51,8 @@ Route::middleware('auth:web,employee')->group(function () {
     Route::resource('leave-types', \App\Http\Controllers\LeaveTypeController::class);
     Route::resource('leave-policies', \App\Http\Controllers\LeavePolicyController::class);
     Route::resource('leave-applications', \App\Http\Controllers\LeaveApplicationController::class);
+    Route::post('leave-applications/{leave_application}/approve', [\App\Http\Controllers\LeaveApplicationController::class, 'approve'])->name('leave-applications.approve');
+    Route::post('leave-applications/{leave_application}/reject', [\App\Http\Controllers\LeaveApplicationController::class, 'reject'])->name('leave-applications.reject');
 
     // Attendance Management
     Route::resource('attendance-shifts', \App\Http\Controllers\ShiftController::class);

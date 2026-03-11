@@ -94,7 +94,7 @@
                         @endforeach
                         @foreach($item->calculation_snapshot['loans'] as $loan)
                         <tr>
-                            <td>Loan Installment</td>
+                            <td>Full Loan Repayment</td>
                             <td class="amount" style="color: #ef4444;">-${{ number_format($loan['amount'], 2) }}</td>
                         </tr>
                         @endforeach

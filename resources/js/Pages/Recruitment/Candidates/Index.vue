@@ -151,8 +151,6 @@ const deleteCandidate = () => {
     <AuthenticatedLayout>
         <div class="mb-6 flex justify-between items-center">
             <h2 class="text-2xl font-bold text-gray-800">Candidates</h2>
-            <Button label="Add Candidate" icon="pi pi-plus" @click="openNew"
-                class="!bg-[#1C0D82] !border-[#1C0D82] hover:!bg-[#150a61] text-white !px-6 !py-2.5" />
         </div>
 
         <SearchFilter v-model="searchTerm" v-model:perPage="perPage" placeholder="Search candidates..."

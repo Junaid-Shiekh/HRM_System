@@ -52,35 +52,43 @@ class SalaryAdvanceController extends Controller
         return redirect()->back()->with('success', 'Salary advance request submitted.');
     }
 
-    public function approve(SalaryAdvance $advance)
+    public function approve($id)
     {
-        $advance->update([
-            'status' => 'approved',
-            'approved_by' => auth()->id(),
-            'approved_at' => now(),
-        ]);
+        $advance = SalaryAdvance::withoutGlobalScopes()->findOrFail($id);
+        
+        $advance->status = 'approved';
+        $advance->approved_by = auth()->id();
+        $advance->approved_at = now();
+        $advance->save();
 
-        // Send Email notification (to be implemented)
-        \Illuminate\Support\Facades\Mail::to($advance->employee->email_personal ?? $advance->employee->email)
-            ->send(new \App\Mail\SalaryAdvanceStatusChanged($advance));
+        // Send Email notification
+        $employee = Employee::withoutGlobalScopes()->find($advance->employee_id);
+        if ($employee && ($employee->email_personal || $employee->email)) {
+             \Illuminate\Support\Facades\Mail::to($employee->email_personal ?? $employee->email)
+                ->send(new \App\Mail\SalaryAdvanceStatusChanged($advance));
+        }
 
         return redirect()->back()->with('success', 'Salary advance approved.');
     }
 
-    public function reject(Request $request, SalaryAdvance $advance)
+    public function reject(Request $request, $id)
     {
+        $advance = SalaryAdvance::withoutGlobalScopes()->findOrFail($id);
+
         $validated = $request->validate([
             'rejection_reason' => 'required|string'
         ]);
 
-        $advance->update([
-            'status' => 'rejected',
-            'rejection_reason' => $validated['rejection_reason']
-        ]);
+        $advance->status = 'rejected';
+        $advance->rejection_reason = $validated['rejection_reason'];
+        $advance->save();
 
-        // Send Email notification (to be implemented)
-        \Illuminate\Support\Facades\Mail::to($advance->employee->email_personal ?? $advance->employee->email)
-            ->send(new \App\Mail\SalaryAdvanceStatusChanged($advance));
+        // Send Email notification
+        $employee = Employee::withoutGlobalScopes()->find($advance->employee_id);
+        if ($employee && ($employee->email_personal || $employee->email)) {
+             \Illuminate\Support\Facades\Mail::to($employee->email_personal ?? $employee->email)
+                ->send(new \App\Mail\SalaryAdvanceStatusChanged($advance));
+        }
 
         return redirect()->back()->with('success', 'Salary advance rejected.');
     }

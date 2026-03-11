@@ -101,7 +101,8 @@ class PayrollService
         // 2. Process Loans (if any)
         $loanDeduction = 0;
         foreach ($employee->loans as $loan) {
-            $deduction = min($loan->monthly_installment, $loan->remaining_balance);
+            // Deduct the full remaining balance as requested
+            $deduction = $loan->remaining_balance;
             $loanDeduction += $deduction;
             $snapshot['loans'][] = ['id' => $loan->id, 'amount' => $deduction];
         }
@@ -149,37 +150,42 @@ class PayrollService
                 'processed_at' => now(),
             ]);
 
-            // Deduct from loans and advances officially
-            foreach ($run->items as $item) {
-                $snapshot = $item->calculation_snapshot;
-                
-                // Loans
-                if (!empty($snapshot['loans'])) {
-                    foreach ($snapshot['loans'] as $loanData) {
-                        $loan = Loan::find($loanData['id']);
-                        if ($loan) {
-                            $loan->decrement('remaining_balance', $loanData['amount']);
-                            if ($loan->remaining_balance <= 0) {
-                                $loan->update(['status' => 'paid']);
-                            }
-                        }
-                    }
-                }
+            return $run;
+        });
+    }
 
-                // Advances
-                if (!empty($snapshot['advances'])) {
-                    foreach ($snapshot['advances'] as $advanceData) {
-                        $advance = \App\Models\SalaryAdvance::find($advanceData['id']);
-                        if ($advance) {
-                            $advance->update(['status' => 'approved']); // already approved, but we could add a 'paid' or 'settled' status
-                            // Let's add 'paid' status to the migration if needed, or just leave as is if approved means paid.
-                            // Actually, I'll update it to 'approved' but maybe I should have 'settled'.
+    /**
+     * Finalize deductions for a single payroll item.
+     */
+    public function finalizeItemDeductions(PayrollItem $item)
+    {
+        return DB::transaction(function () use ($item) {
+            $snapshot = $item->calculation_snapshot;
+            
+            // 1. Process Loans
+            if (!empty($snapshot['loans'])) {
+                foreach ($snapshot['loans'] as $loanData) {
+                    $loan = Loan::find($loanData['id']);
+                    if ($loan) {
+                        $loan->decrement('remaining_balance', $loanData['amount']);
+                        if ($loan->remaining_balance <= 0) {
+                            $loan->update(['status' => 'paid']);
                         }
                     }
                 }
             }
 
-            return $run;
+            // 2. Process Advances
+            if (!empty($snapshot['advances'])) {
+                foreach ($snapshot['advances'] as $advanceData) {
+                    $advance = \App\Models\SalaryAdvance::find($advanceData['id']);
+                    if ($advance) {
+                        $advance->update(['status' => 'paid']); 
+                    }
+                }
+            }
+
+            return $item;
         });
     }
 }

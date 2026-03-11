@@ -148,8 +148,9 @@ const rowClass = (data) => {
                 <Column header="Status" style="width: 15%">
                     <template #body="slotProps">
                         <Tag :value="slotProps.data.status" :severity="getSeverity(slotProps.data.status)"
-                            class="capitalize" :class="{ 'cursor-pointer': slotProps.data.status !== 'rejected' }"
-                            @click="slotProps.data.status !== 'rejected' && editStatus(slotProps.data)" />
+                            class="capitalize"
+                            :class="{ 'cursor-pointer': slotProps.data.status !== 'rejected' && slotProps.data.status !== 'hired' }"
+                            @click="slotProps.data.status !== 'rejected' && slotProps.data.status !== 'hired' && editStatus(slotProps.data)" />
                     </template>
                 </Column>
                 <Column field="applied_at" header="Applied Date" sortable>
@@ -177,10 +178,9 @@ const rowClass = (data) => {
                                 rounded aria-label="View Details" @click="viewDetails(slotProps.data)">
                                 <i class="pi pi-eye"></i>
                             </Button>
-                            <Button
+                            <Button v-if="slotProps.data.status !== 'hired' && slotProps.data.status !== 'rejected'"
                                 class="!bg-orange-100 !text-orange-600 !border-orange-100 hover:!bg-orange-200 !rounded-full !w-10 !h-10 !p-0 !min-w-[40px] flex items-center justify-center p-button-icon-only"
-                                rounded aria-label="Edit Status" @click="editStatus(slotProps.data)"
-                                :disabled="slotProps.data.status === 'rejected'">
+                                rounded aria-label="Edit Status" @click="editStatus(slotProps.data)">
                                 <i class="pi pi-file-edit"></i>
                             </Button>
                         </div>
@@ -206,7 +206,7 @@ const rowClass = (data) => {
                     <div class="flex flex-col gap-1">
                         <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</span>
                         <span class="text-gray-900 font-medium truncate">{{ selectedApplication.candidate.email
-                        }}</span>
+                            }}</span>
                     </div>
                     <div class="flex flex-col gap-1">
                         <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Phone</span>

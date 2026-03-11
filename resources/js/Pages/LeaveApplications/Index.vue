@@ -20,6 +20,7 @@ const props = defineProps({
     leaveTypes: Array,
     employees: Array,
     filters: Object,
+    isEmployee: Boolean,
 });
 
 const searchTerm = ref(props.filters.search || '');
@@ -96,6 +97,11 @@ const openNew = () => {
     form.clearErrors();
     submitted.value = false;
     isEdit.value = false;
+
+    if (props.isEmployee) {
+        form.employee_id = props.employees[0]?.id;
+    }
+
     applicationDialog.value = true;
 };
 
@@ -170,6 +176,18 @@ const saveApplication = () => {
 
 
 const confirmDeleteApplication = (app) => {
+    if (app.status === 'pending' && !props.isEmployee) {
+        alertConfig.value = {
+            title: 'Restriction!',
+            message: "You can't delete this until you approve or reject it.",
+            type: 'error',
+            showCancel: false,
+            confirmText: 'OK'
+        };
+        showAlert.value = true;
+        return;
+    }
+
     form.id = app.id;
     alertConfig.value = {
         title: 'Are you sure?',
@@ -192,6 +210,36 @@ const deleteApplication = () => {
                 showCancel: false
             };
             showAlert.value = true;
+        }
+    });
+};
+
+const approveApplication = (app) => {
+    router.post(route('leave-applications.approve', app.id), {}, {
+        onSuccess: () => {
+            alertConfig.value = {
+                title: 'Approved!',
+                message: 'Leave application has been approved.',
+                type: 'success',
+                showCancel: false
+            };
+            showAlert.value = true;
+            viewDialog.value = false;
+        }
+    });
+};
+
+const rejectApplication = (app) => {
+    router.post(route('leave-applications.reject', app.id), {}, {
+        onSuccess: () => {
+            alertConfig.value = {
+                title: 'Rejected!',
+                message: 'Leave application has been rejected.',
+                type: 'success',
+                showCancel: false
+            };
+            showAlert.value = true;
+            viewDialog.value = false;
         }
     });
 };
@@ -228,6 +276,8 @@ const calculateDays = (start, end) => {
     <AuthenticatedLayout>
         <div class="mb-6 flex justify-between items-center">
             <h2 class="text-2xl font-bold text-gray-800">Leave Application Management</h2>
+            <Button v-if="isEmployee" label="New Application" icon="pi pi-plus"
+                class="!bg-[#1C0D82] !border-[#1C0D82] text-white !px-6 !rounded-lg" @click="openNew" />
         </div>
 
         <SearchFilter v-model="searchTerm" v-model:perPage="perPage" placeholder="Search leave applications..."
@@ -271,10 +321,17 @@ const calculateDays = (start, end) => {
                                 rounded aria-label="View">
                                 <i class="pi pi-eye"></i>
                             </Button>
-                            <Button @click="editApplication(slotProps.data)"
-                                class="!bg-orange-100 !text-orange-600 !border-orange-100 hover:!bg-orange-200 !rounded-full !w-10 !h-10 !p-0 flex items-center justify-center p-button-icon-only"
-                                rounded aria-label="Edit">
-                                <i class="pi pi-pencil"></i>
+                            <Button v-if="slotProps.data.status === 'pending' && !isEmployee"
+                                @click="approveApplication(slotProps.data)"
+                                class="!bg-emerald-100 !text-emerald-600 !border-emerald-100 hover:!bg-emerald-200 !rounded-full !w-10 !h-10 !p-0 flex items-center justify-center"
+                                rounded aria-label="Approve">
+                                <i class="pi pi-check"></i>
+                            </Button>
+                            <Button v-if="slotProps.data.status === 'pending' && !isEmployee"
+                                @click="rejectApplication(slotProps.data)"
+                                class="!bg-rose-100 !text-rose-600 !border-rose-100 hover:!bg-rose-200 !rounded-full !w-10 !h-10 !p-0 flex items-center justify-center"
+                                rounded aria-label="Reject">
+                                <i class="pi pi-times"></i>
                             </Button>
                             <Button @click="confirmDeleteApplication(slotProps.data)"
                                 class="!bg-red-100 !text-red-600 !border-red-100 hover:!bg-red-200 !rounded-full !w-10 !h-10 !p-0 flex items-center justify-center p-button-icon-only"
@@ -290,7 +347,7 @@ const calculateDays = (start, end) => {
         <Dialog v-model:visible="applicationDialog" :style="{ width: '500px' }"
             :header="isEdit ? 'Edit Leave Application' : 'Add New Leave Application'" :modal="true" class="p-fluid">
             <div class="flex flex-col gap-4 pt-4">
-                <div class="flex flex-col gap-2">
+                <div class="flex flex-col gap-2" v-if="!isEmployee">
                     <label class="font-bold">Employee *</label>
                     <Dropdown v-model="form.employee_id" :options="employees" optionLabel="name" optionValue="id"
                         placeholder="Select Employee" />
@@ -316,7 +373,7 @@ const calculateDays = (start, end) => {
                     <label class="font-bold">Reason *</label>
                     <Textarea v-model="form.reason" rows="3" />
                 </div>
-                <div class="flex flex-col gap-2">
+                <div class="flex flex-col gap-2" v-if="!isEmployee">
                     <label class="font-bold">Status</label>
                     <Dropdown v-model="form.status" :options="statuses" optionLabel="label" optionValue="value" />
                 </div>
@@ -362,7 +419,7 @@ const calculateDays = (start, end) => {
                     <label class="font-bold text-gray-500">Reason</label>
                     <div class="p-2 bg-gray-50 rounded border text-sm overflow-hidden text-ellipsis">{{ viewData.reason
                         || '-'
-                        }}</div>
+                    }}</div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div class="flex flex-col gap-1">
@@ -378,9 +435,17 @@ const calculateDays = (start, end) => {
                 </div>
             </div>
             <template #footer>
-                <Button label="Close" icon="pi pi-times"
-                    class="bg-gray-200 text-gray-700 hover:bg-gray-300 !px-6 !py-2.5 !border-gray-200"
-                    @click="viewDialog = false" />
+                <div class="flex justify-between items-center w-full">
+                    <div class="flex gap-2" v-if="viewData && viewData.status === 'pending' && !isEmployee">
+                        <Button label="Approve" icon="pi pi-check" @click="approveApplication(viewData)"
+                            class="!bg-emerald-600 !border-emerald-600 hover:!bg-emerald-700 text-white !px-6 !py-2.5 !rounded-xl" />
+                        <Button label="Reject" icon="pi pi-times" @click="rejectApplication(viewData)"
+                            class="!bg-rose-600 !border-rose-600 hover:!bg-rose-700 text-white !px-6 !py-2.5 !rounded-xl" />
+                    </div>
+                    <Button label="Close" icon="pi pi-times"
+                        class="bg-gray-200 text-gray-700 hover:bg-gray-300 !px-6 !py-2.5 !border-gray-200 !rounded-xl"
+                        @click="viewDialog = false" />
+                </div>
             </template>
         </Dialog>
 

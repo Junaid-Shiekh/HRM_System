@@ -352,7 +352,7 @@ const formatDateTime = (dateString, timeOnly = false) => {
                                 <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{
                                     employee.shift.name }}</p>
                                 <p class="text-sm font-black text-gray-700">{{ employee.shift.start_time.substring(0, 5)
-                                    }} - {{ employee.shift.end_time.substring(0, 5) }}</p>
+                                }} - {{ employee.shift.end_time.substring(0, 5) }}</p>
                             </div>
                             <div
                                 class="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600">
@@ -713,6 +713,17 @@ const formatDateTime = (dateString, timeOnly = false) => {
                         <InputText v-model="loanForm.amount" type="number" class="!rounded-xl" />
                     </div>
                     <div class="flex flex-col gap-2">
+                        <label class="font-bold text-sm">Preferred Installments (Months)</label>
+                        <InputText v-model="loanForm.installments" type="number" class="!rounded-xl" />
+                    </div>
+                    <div v-if="loanForm.amount > 0" class="p-3 bg-indigo-50 border border-indigo-100 rounded-xl">
+                        <div class="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1">Estimated
+                            Monthly
+                            Deduction</div>
+                        <div class="text-lg font-black text-indigo-900">${{ (loanForm.amount / (loanForm.installments ||
+                            1)).toFixed(2) }}</div>
+                    </div>
+                    <div class="flex flex-col gap-2">
                         <label class="font-bold text-sm">Reason</label>
                         <Textarea v-model="loanForm.reason" rows="3" class="!rounded-xl !resize-none" />
                     </div>
@@ -759,7 +770,7 @@ const formatDateTime = (dateString, timeOnly = false) => {
                         <h3 class="text-xl font-black text-indigo-900">{{ selectedItem.title }}</h3>
                         <p class="text-sm text-indigo-600 font-bold mt-1">{{ selectedItem.date }} | {{
                             selectedItem.start_time_fmt
-                            }}</p>
+                        }}</p>
                     </div>
                     <div class="p-4 bg-gray-50 rounded-2xl border border-gray-100 text-gray-600">
                         {{ selectedItem.description || 'No description provided.' }}

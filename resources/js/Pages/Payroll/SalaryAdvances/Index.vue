@@ -77,7 +77,8 @@ const showSuccess = (msg) => {
 const getStatusSeverity = (status) => {
     switch (status) {
         case 'pending': return 'warning';
-        case 'approved': return 'success';
+        case 'approved': return 'info';
+        case 'paid': return 'success';
         case 'rejected': return 'danger';
         default: return 'info';
     }
@@ -93,9 +94,7 @@ const formatCurrency = (value) => {
     <Head title="Salary Advances" />
     <AuthenticatedLayout>
         <div class="mb-6 flex justify-between items-center">
-            <h2 class="text-2xl font-bold text-gray-800">Salary Advances</h2>
-            <Button label="New Advance Request" icon="pi pi-plus" @click="openNew"
-                class="!bg-fuchsia-600 !border-fuchsia-600 hover:!bg-fuchsia-700 text-white !px-6 !py-2.5" />
+            <h2 class="text-xl font-bold text-gray-800">Salary Advances</h2>
         </div>
 
         <div class="card bg-white p-6 rounded-xl shadow-sm border border-gray-100">

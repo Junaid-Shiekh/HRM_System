@@ -92,7 +92,8 @@ const menuItems = ref([
             { label: 'Salary Components', route: 'salary-components.index', icon: 'pi pi-list' },
             { label: 'Payroll Setup', route: 'salary-profiles.index', icon: 'pi pi-cog' },
             { label: 'Process Payroll', route: 'payrolls.index', icon: 'pi pi-money-bill' },
-            { label: 'Loans & Advances', route: 'loans.index', icon: 'pi pi-wallet' }
+            { label: 'Loans', route: 'loans.index', icon: 'pi pi-credit-card' },
+            { label: 'Salary Advances', route: 'salary-advances.index', icon: 'pi pi-wallet' }
         ]
     },
     {
@@ -130,7 +131,8 @@ const filteredMenuItems = computed(() => {
             items: [
                 { label: 'Meetings', route: 'meetings.index', icon: 'pi pi-calendar' },
                 { label: 'Complaints', route: 'complaints.index', icon: 'pi pi-exclamation-circle' },
-                { label: 'Warnings', route: 'warnings.index', icon: 'pi pi-exclamation-triangle' }
+                { label: 'Warnings', route: 'warnings.index', icon: 'pi pi-exclamation-triangle' },
+                { label: 'Leave Applications', route: 'leave-applications.index', icon: 'pi pi-calendar-plus' }
             ]
         }
     ];
@@ -165,16 +167,15 @@ const toggleSection = (index) => {
 </script>
 
 <template>
-    <div class="h-screen w-64 bg-white border-r border-gray-200 flex flex-col fixed left-0 top-0 overflow-y-auto font-['Open_Sans']">
+    <div
+        class="h-screen w-64 bg-white border-r border-gray-200 flex flex-col fixed left-0 top-0 overflow-y-auto font-['Poppins',sans-serif']">
         <!-- Logo -->
         <div class="h-24 flex items-center px-6 mb-2 border-b border-gray-50 bg-gray-50/10 pt-4">
             <div class="flex items-center gap-2">
                 <ApplicationLogo class="w-10 h-10 mb-3 fill-current text-[#1C0D82]" />
                 <div class="flex flex-col">
-                    <span
-                        class="text-2xl font-black tracking-tighter mt-2 text-[#1C0D82] leading-none">Aimanova</span>
-                    <span
-                        class="text-[10px] tracking-[0.1em]  text-black leading-none mt-2 ml-2 opacity-90">HRM
+                    <span class="text-2xl font-black tracking-tighter mt-2 text-[#1C0D82] leading-none">Aimanova</span>
+                    <span class="text-[10px] tracking-[0.1em]  text-black leading-none mt-2 ml-2 opacity-90">HRM
                         System</span>
                 </div>
             </div>
@@ -184,16 +185,37 @@ const toggleSection = (index) => {
         <div class="flex-1 py-4">
             <template v-for="(section, index) in filteredMenuItems" :key="index">
                 <button @click="toggleSection(index)"
-                    class="w-full px-6 py-2 flex items-center justify-between text-[13px]  text-black hover:text-gray-700 focus:outline-none">
+                    class="w-full px-6 py-2 flex items-center justify-between text-[13px] font-semibold text-black hover:text-gray-700 focus:outline-none">
                     <span>{{ section.label }}</span>
-                    <i class="pi pi-chevron-down text-[10px] transition-transform duration-200"
-                        :class="{ 'rotate-180': section.expanded }"></i>
+                    <div class="flex items-center gap-2">
+                        <span
+                            v-if="section.label === 'Leave Management' && !isEmployee && $page.props.pendingLeaveCount > 0"
+                            class="bg-orange-500 text-white text-[10px] px-1.5 py-0.5 rounded-full min-w-[18px] text-center border border-white/20">
+                            {{ $page.props.pendingLeaveCount }}
+                        </span>
+                        <span
+                            v-if="section.label === 'Payroll & Finance' && !isEmployee && ($page.props.pendingLoanCount + $page.props.pendingAdvanceCount) > 0"
+                            class="bg-orange-500 text-white text-[10px] px-1.5 py-0.5 rounded-full min-w-[18px] text-center border border-white/20">
+                            {{ $page.props.pendingLoanCount + $page.props.pendingAdvanceCount }}
+                        </span>
+                        <span
+                            v-if="(section.label === 'Self Service' || section.label === 'Aimanova Management' || section.label === 'Company Management') && !isEmployee && $page.props.pendingComplaintCount > 0"
+                            class="bg-orange-500 text-white text-[10px] px-1.5 py-0.5 rounded-full min-w-[18px] text-center border border-white/20">
+                            {{ $page.props.pendingComplaintCount }}
+                        </span>
+                        <span v-if="section.label === 'Recruitment' && !isEmployee && $page.props.applicantCount > 0"
+                            class="bg-orange-500 text-white text-[10px] px-1.5 py-0.5 rounded-full min-w-[18px] text-center border border-white/20">
+                            {{ $page.props.applicantCount }}
+                        </span>
+                        <i class="pi pi-chevron-down text-[10px] transition-transform duration-200"
+                            :class="{ 'rotate-180': section.expanded }"></i>
+                    </div>
                 </button>
 
                 <div v-show="section.expanded" class="space-y-1 px-3 mb-4 transition-all duration-300 ease-in-out">
                     <Link v-for="item in section.items" :key="item.label"
                         :href="route().has(item.route) ? route(item.route) : '#'"
-                        class="flex items-center px-3 py-2 text-xs font-medium rounded-md transition-colors duration-150 group"
+                        class="flex items-center px-3 py-2 text-xs font-semibold rounded-md transition-colors duration-150 group"
                         :class="[
                             route().current(item.route)
                                 ? 'bg-indigo-50 text-indigo-700'
@@ -203,26 +225,30 @@ const toggleSection = (index) => {
                             :class="[item.icon, 'mr-3 text-lg', route().current(item.route) ? 'text-indigo-700' : 'text-black group-hover:text-white']"></i>
                         <span class="flex-1">{{ item.label }}</span>
                         <span v-if="item.label === 'Applicants' && $page.props.applicantCount > 0"
-                            class="ml-auto bg-red-500 text-white text-[10px]  px-2 py-0.5 rounded-full min-w-[18px] text-center">
-                            {{ $page.props.applicantCount }}
+                            class="ml-auto w-2 h-2 bg-orange-500 rounded-full mr-1">
                         </span>
                         <span v-if="item.label === 'Complaints' && !isEmployee && $page.props.pendingComplaintCount > 0"
-                            class="ml-auto bg-[#1C0D82] text-white text-[10px]  px-2 py-0.5 rounded-full min-w-[18px] text-center border border-white/20">
-                            {{ $page.props.pendingComplaintCount }}
+                            class="ml-auto w-2 h-2 bg-orange-500 rounded-full mr-1">
                         </span>
                         <span
                             v-if="item.label === 'Employee Warnings' && !isEmployee && $page.props.pendingWarningCount > 0"
                             class="ml-auto bg-orange-500 text-white text-[10px]  px-2 py-0.5 rounded-full min-w-[18px] text-center border border-white/20">
                             {{ $page.props.pendingWarningCount }}
                         </span>
+                        <span
+                            v-if="item.label === 'Leave Applications' && !isEmployee && $page.props.pendingLeaveCount > 0"
+                            class="ml-auto w-2 h-2 bg-orange-500 rounded-full mr-1">
+                        </span>
                         <span v-if="item.label === 'Warnings' && isEmployee && $page.props.pendingWarningCount > 0"
                             class="ml-auto bg-orange-500 text-white text-[10px]  px-2 py-0.5 rounded-full min-w-[18px] text-center border border-white/20">
                             {{ $page.props.pendingWarningCount }}
                         </span>
+                        <span v-if="item.label === 'Loans' && !isEmployee && $page.props.pendingLoanCount > 0"
+                            class="ml-auto w-2 h-2 bg-orange-500 rounded-full mr-1">
+                        </span>
                         <span
-                            v-if="item.label === 'Loans & Advances' && !isEmployee && ($page.props.pendingLoanCount + $page.props.pendingAdvanceCount) > 0"
-                            class="ml-auto bg-blue-600 text-white text-[10px]  px-2 py-0.5 rounded-full min-w-[18px] text-center border border-white/20">
-                            {{ $page.props.pendingLoanCount + $page.props.pendingAdvanceCount }}
+                            v-if="item.label === 'Salary Advances' && !isEmployee && $page.props.pendingAdvanceCount > 0"
+                            class="ml-auto w-2 h-2 bg-orange-500 rounded-full mr-1">
                         </span>
                     </Link>
 

@@ -39,14 +39,14 @@ class WebsiteController extends Controller
             'last_name' => 'required|string|max:255',
             'email' => 'required|email|max:255',
             'phone' => 'required|string|max:20',
-            'resume' => 'required|file|mimes:pdf,doc,docx|max:2048',
+            'resume' => 'required|file|mimes:pdf,doc,docx|max:5120',
         ]);
 
         $job = JobPosting::findOrFail($request->job_id);
 
-        // Find or create candidate
+        // Find or create candidate linked to the same HR
         $candidate = \App\Models\Candidate::firstOrCreate(
-            ['email' => $request->email],
+            ['email' => $request->email, 'hr_id' => $job->hr_id],
             [
                 'first_name' => $request->first_name,
                 'last_name' => $request->last_name,
@@ -55,9 +55,10 @@ class WebsiteController extends Controller
         );
 
         $application = new \App\Models\JobApplication();
+        $application->hr_id = $job->hr_id;
         $application->job_posting_id = $job->id;
         $application->candidate_id = $candidate->id;
-        $application->status = 'applied';
+        $application->status = \App\Enums\ApplicationStatus::APPLIED;
         
         if ($request->hasFile('resume')) {
             $path = $request->file('resume')->store('resumes', 'public');

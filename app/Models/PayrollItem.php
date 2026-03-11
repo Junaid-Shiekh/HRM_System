@@ -23,6 +23,7 @@ class PayrollItem extends Model
         'attendance_deduction',
         'bonus',
         'loan_deduction',
+        'advance_deduction',
         'net_salary',
         'status',
         'paid_at',

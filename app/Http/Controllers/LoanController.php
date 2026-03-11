@@ -52,34 +52,42 @@ class LoanController extends Controller
         return redirect()->back()->with('success', 'Loan request submitted.');
     }
 
-    public function approve(Loan $loan)
+    public function approve($id)
     {
-        $loan->update([
-            'status' => 'approved',
-            'approved_at' => now(),
-        ]);
+        $loan = Loan::withoutGlobalScopes()->findOrFail($id);
+        
+        $loan->status = 'approved';
+        $loan->approved_at = now();
+        $loan->save();
 
         // Send Email notification
-        \Illuminate\Support\Facades\Mail::to($loan->employee->email_personal ?? $loan->employee->email)
-            ->send(new \App\Mail\LoanStatusChanged($loan));
+        $employee = Employee::withoutGlobalScopes()->find($loan->employee_id);
+        if ($employee && ($employee->email_personal || $employee->email)) {
+             \Illuminate\Support\Facades\Mail::to($employee->email_personal ?? $employee->email)
+                ->send(new \App\Mail\LoanStatusChanged($loan));
+        }
 
         return redirect()->back()->with('success', 'Loan approved.');
     }
 
-    public function reject(Request $request, Loan $loan)
+    public function reject(Request $request, $id)
     {
+        $loan = Loan::withoutGlobalScopes()->findOrFail($id);
+
         $validated = $request->validate([
             'rejection_reason' => 'required|string'
         ]);
 
-        $loan->update([
-            'status' => 'rejected',
-            'rejection_reason' => $validated['rejection_reason']
-        ]);
+        $loan->status = 'rejected';
+        $loan->rejection_reason = $validated['rejection_reason'];
+        $loan->save();
 
         // Send Email notification
-        \Illuminate\Support\Facades\Mail::to($loan->employee->email_personal ?? $loan->employee->email)
-            ->send(new \App\Mail\LoanStatusChanged($loan));
+        $employee = Employee::withoutGlobalScopes()->find($loan->employee_id);
+        if ($employee && ($employee->email_personal || $employee->email)) {
+             \Illuminate\Support\Facades\Mail::to($employee->email_personal ?? $employee->email)
+                ->send(new \App\Mail\LoanStatusChanged($loan));
+        }
 
         return redirect()->back()->with('success', 'Loan rejected.');
     }

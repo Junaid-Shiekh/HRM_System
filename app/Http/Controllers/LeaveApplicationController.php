@@ -21,14 +21,25 @@ class LeaveApplicationController extends Controller
 
     public function index(Request $request): Response
     {
+        $user = auth()->user();
+        $isEmployee = $user->user_type === 'employee';
+        
         $filters = $request->only(['search', 'employee_id', 'leave_type_id', 'status', 'perPage']);
+        
+        $employee = null;
+        if ($isEmployee) {
+            $employee = Employee::withoutGlobalScopes()->where('user_id', $user->id)->firstOrFail();
+            $filters['employee_id'] = $employee->id;
+        }
+
         $leaveApplications = $this->leaveService->listApplications($filters);
 
         return Inertia::render('LeaveApplications/Index', [
             'leaveApplications' => $leaveApplications,
             'leaveTypes' => LeaveType::where('status', 'active')->get(),
-            'employees' => Employee::all(),
+            'employees' => $isEmployee ? [$employee] : Employee::all(),
             'filters' => $filters,
+            'isEmployee' => $isEmployee,
         ]);
     }
 
@@ -54,6 +65,17 @@ class LeaveApplicationController extends Controller
 
         if ($isEmployee) {
             $employee = Employee::where('user_id', $user->id)->firstOrFail();
+            
+            // Check if already has an application of this type
+            $exists = LeaveApplication::where('employee_id', $employee->id)
+                ->where('leave_type_id', $validated['leave_type_id'])
+                ->whereIn('status', ['pending', 'approved'])
+                ->exists();
+
+            if ($exists) {
+                return redirect()->back()->withErrors(['leave_type_id' => 'You already have an active application for this leave type.']);
+            }
+
             $validated['employee_id'] = $employee->id;
             $validated['status'] = 'pending';
         }
@@ -91,8 +113,31 @@ class LeaveApplicationController extends Controller
 
     public function destroy(LeaveApplication $leaveApplication)
     {
+        if ($leaveApplication->status === 'pending') {
+            return redirect()->back()->with('error', "You can't delete this until you approve or reject it.");
+        }
+
         $this->leaveService->deleteApplication($leaveApplication);
 
         return back()->with('success', 'Leave application deleted successfully.');
+    }
+
+    public function approve(LeaveApplication $leaveApplication)
+    {
+        $this->leaveService->updateApplication($leaveApplication, [
+            'status' => 'approved',
+            'approved_by' => auth()->id()
+        ]);
+
+        return redirect()->back()->with('success', 'Leave application approved!');
+    }
+
+    public function reject(LeaveApplication $leaveApplication)
+    {
+        $this->leaveService->updateApplication($leaveApplication, [
+            'status' => 'rejected'
+        ]);
+
+        return redirect()->back()->with('success', 'Leave application rejected.');
     }
 }

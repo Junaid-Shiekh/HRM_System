@@ -55,7 +55,7 @@ class PayrollController extends Controller
         }
 
         return Inertia::render('Payroll/Show', [
-            'run' => $payroll->load(['items.employee.department', 'items.employee.salaryProfile', 'branch']),
+            'run' => $payroll->load(['items.employee.department', 'items.employee.salaryProfile', 'items.employee.loans', 'branch']),
         ]);
     }
 
@@ -106,11 +106,43 @@ class PayrollController extends Controller
         return $pdf->download("payslip-{$item->employee->employee_id}.pdf");
     }
 
-    public function markAsPaid(PayrollRun $payroll, PayrollItem $item)
+    public function markAsPaid(Request $request, PayrollRun $payroll, PayrollItem $item)
     {
         if ($item->payroll_run_id !== $payroll->id) {
             abort(404);
         }
+
+        $shouldDeduct = $request->input('deduct', true);
+
+        if (!$shouldDeduct) {
+            // Remove deductions from this item
+            $item->loan_deduction = 0;
+            $item->advance_deduction = 0;
+        } else {
+            // FORCE FULL PAYOFF: Calculate total remaining from all approved loans
+            $totalLoanBalance = $item->employee->loans()->where('status', 'approved')->where('remaining_balance', '>', 0)->sum('remaining_balance');
+            
+            if ($totalLoanBalance > 0) {
+                // Update the item to reflect the full payoff for historical accuracy and payslip
+                $item->loan_deduction = $totalLoanBalance;
+                
+                // Update the snapshot so the PDF reflects the full payoff
+                $snapshot = $item->calculation_snapshot;
+                $snapshot['loans'] = [];
+                foreach ($item->employee->loans as $loan) {
+                    if ($loan->status === 'approved' && $loan->remaining_balance > 0) {
+                        $snapshot['loans'][] = ['id' => $loan->id, 'amount' => $loan->remaining_balance];
+                    }
+                }
+                $item->calculation_snapshot = $snapshot;
+            }
+
+            // Officially finalize the deduction from the loan/advance balance
+            $this->payrollService->finalizeItemDeductions($item);
+        }
+
+        // Finalize Net Salary
+        $item->net_salary = $item->base_salary + $item->total_allowances - $item->total_deductions - $item->loan_deduction - $item->advance_deduction - $item->attendance_deduction;
 
         $item->status = 'paid';
         $item->paid_at = now();
@@ -122,6 +154,8 @@ class PayrollController extends Controller
 
         try {
             if ($item->employee && $item->employee->email) {
+                // We pass the deduction status to the mail if needed, 
+                // but the payslip PDF will automatically reflect the $item state.
                 Mail::to($item->employee->email)->send(new PayslipMail($item));
             }
 
@@ -136,7 +170,6 @@ class PayrollController extends Controller
 
             return redirect()->back()->with('success', "Salary marked as paid and emailed to {$item->employee->first_name}.");
         } catch (\Exception $e) {
-            // Success on payment anyway, but warn about email
             return redirect()->back()->with('warning', "Salary marked as paid, but email failed: " . $e->getMessage());
         }
     }
